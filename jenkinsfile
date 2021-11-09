@@ -1,0 +1,92 @@
+pipeline{
+    agent any
+    environment{
+        PATH="/opt/maven3/bin:$PATH"
+    }
+    stages{
+        stage("git checkout"){
+            agent{
+              label 'master'
+            }
+            steps{
+                git credentialsId: 'ashish-ct-git', url: 'https://github.com/ashish-ct/health.git'
+            }
+        }
+        stage("mvn -clean"){
+            agent{
+              label 'master'
+            }
+            steps{
+              sh "mvn clean"  
+            }
+        }
+        
+        stage("mvn -test"){
+            agent{
+              label 'master'
+            }
+            steps{
+              sh "mvn test"  
+            }
+        }
+        stage("mvn -package"){
+            agent{
+              label 'master'
+            }
+            steps{
+              sh "mvn package"  
+            }
+        }
+        stage('SonarQube analysis') {
+            agent{
+              label 'master'
+            }
+                 //    def scannerHome = tool 'SonarScanner 4.0';
+           steps{
+              withSonarQubeEnv('sonar') { 
+                  // If you have configured more than one global server connection, you can specify its name
+                  //      sh "${scannerHome}/bin/sonar-scanner"
+                  sh "mvn sonar:sonar"
+                }
+            }
+        }
+        stage("Docker-build"){
+            agent{
+              label 'master'
+            }
+            steps{
+              sh "docker build -t ashish5990/my-app:2.0.1 ."
+            }
+        }
+        stage('Push Image'){
+            agent{
+              label 'master'
+            }
+            steps{
+                 sh """
+                 docker login -u="ashish5990" -p="Rahuldravid@2012"
+                 """
+               sh "docker push ashish5990/my-app:2.0.1"
+            }
+	    }
+	    stage("uploading artifact to s3"){
+	        agent{
+              label 'master'
+            }
+            steps{
+                withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', accessKeyVariable: 'AWS_ACCESS_KEY_ID', credentialsId: 'aws', secretKeyVariable: 'AWS_SECRET_ACCESS_KEY']]) {
+                  sh """aws s3 cp /var/lib/jenkins/workspace/Health2@2/target/java-tomcat-maven-example.war s3://artifact-for-war
+                  """
+                }
+            }
+	    }
+	    stage('Deploy on dev server'){
+            agent{
+              label 'deploy'
+            }
+            steps{
+                sh 'sudo docker run -p 8091:8080 -d --name my-app2.0.1 ashish5990/my-app:2.0.1'
+            }
+        }
+    }
+}
