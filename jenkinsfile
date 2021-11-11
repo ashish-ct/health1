@@ -55,7 +55,7 @@ pipeline{
               label 'master'
             }
             steps{
-              sh "docker build -t ashish5990/my-app:2.0.1 ."
+              sh "docker build -t ashish5990/my-app:${env.BUILD_ID} ."
             }
         }
         stage('Push Image'){
@@ -66,7 +66,7 @@ pipeline{
                  sh """
                  docker login -u="ashish5990" -p="Rahuldravid@2012"
                  """
-               sh "docker push ashish5990/my-app:2.0.1"
+               sh "docker push ashish5990/my-app:${env.BUILD_ID}"
             }
 	    }
 	    stage("uploading artifact to s3"){
@@ -85,7 +85,7 @@ pipeline{
               label 'deploy'
             }
             steps{
-                sh 'sudo docker run -p 8091:8080 -d --name my-app2.0.1 ashish5990/my-app:2.0.1'
+                sh 'sudo docker run -p 8091:8080 -d --name my-app2.0.1 ashish5990/my-app:${env.BUILD_ID}'
             }
         }
     }
