@@ -1,0 +1,67 @@
+pipeline{
+    agent any
+    environment{
+        PATH="/opt/maven3/bin:$PATH"
+    }
+    stages{
+        stage("git checkout"){
+            agent{
+              label 'master'
+            }
+            steps{
+                git credentialsId: 'ashish-ct-git', url: 'https://github.com/ashish-ct/health.git'
+            }
+        }
+        stage("mvn -clean"){
+            agent{
+              label 'master'
+            }
+            steps{
+              sh "mvn clean"  
+            }
+        }
+        
+        stage("mvn -test"){
+            agent{
+              label 'master'
+            }
+            steps{
+              sh "mvn test"  
+            }
+        }
+        stage("mvn -package"){
+            agent{
+              label 'master'
+            }
+            steps{
+              sh "mvn package"  
+            }
+        }
+        stage("Docker-build"){
+            agent{
+              label 'master'
+            }
+            steps{
+              sh "docker build -t ashish5990/my-app:${env.BUILD_ID} ."
+            }
+        }
+        stage('Push Image'){
+            agent{
+              label 'master'
+            }
+            steps{
+                withCredentials([usernameColonPassword(credentialsId: 'dockerhub', variable: 'docker- hub')]) {
+                    // some block
+                 sh "docker push ashish5990/my-app:${env.BUILD_ID}"
+                }
+            }
+	    }
+	    stage('Deploy App') {
+          steps {
+            script {
+              kubernetesDeploy(configs: "k8s.yaml", kubeconfigId: "k8s")
+            }
+          }
+        }
+    }
+}
