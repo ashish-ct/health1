@@ -58,7 +58,7 @@ pipeline{
 	    }
 	    stage('Deploy on dev server'){
             agent{
-              label 'deploy'
+              label 'terraform'
             }
             steps{
                 sh """
